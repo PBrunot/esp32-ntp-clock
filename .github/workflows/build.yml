@@ -1,0 +1,44 @@
+name: Build firmware image
+
+on:
+  workflow_dispatch:
+  pull_request:
+  workflow_run:
+    workflows: [Build IMG]
+    types:
+      - completed
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.platformio/.cache
+            ~/.platformio/packages
+            .pio/build_cache
+          key: ${{ runner.os }}-build-${{ matrix.variant }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install PlatformIO Core
+        run: pip install --upgrade platformio
+      - name: Build PlatformIO Project esp32
+        run: pio run --environment esp32  
+      - name: Upload firmware image
+        uses: actions/upload-artifact@v4
+        with:
+          name: FW
+          path: |
+                .pio/build/esp32/firmware.bin
+          retention-days: 90
